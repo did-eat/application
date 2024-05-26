@@ -1,52 +1,64 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
-import { StyleSheet, View, Alert, Text } from "react-native";
+import { StyleSheet, View, Alert, Text, Pressable } from "react-native";
 import { Button, Input } from "@rneui/themed";
 import { Session } from "@supabase/supabase-js";
+import { ThemedText } from "./ThemedText";
+import { getProfile } from "@/lib/profile";
+import { parseDateDDMMYYYY } from "@/lib/parse-date";
 
 export default function Account({ session }: { session: Session }) {
-  const [loading, setLoading] = useState(true);
   const [username, setUsername] = useState("");
-  const [website, setWebsite] = useState("");
-  const [avatarUrl, setAvatarUrl] = useState("");
-
+  const [date, setDate] = useState(new Date());
+  console.log();
+  //   getProfile(session.user.id);
+  const getProfile = async () => {
+    console.log(session.user.id);
+    const { data, error } = await supabase
+      .from("profile")
+      .select("username")
+      .eq("uid", session.user.id);
+    if (error) throw error;
+    console.log(data[0].username);
+    setUsername(data[0].username);
+  };
   useEffect(() => {
-    if (session) getProfile();
-  }, [session]);
-
-  async function getProfile() {
-    try {
-      setLoading(true);
-      if (!session?.user) throw new Error("No user on the session!");
-
-      const { data, error, status } = await supabase
-        .from("profiles")
-        .select(`username, website, avatar_url`)
-        .eq("id", session?.user.id)
-        .single();
-      if (error && status !== 406) {
-        throw error;
-      }
-
-      if (data) {
-        setUsername(data.username);
-        setWebsite(data.website);
-        setAvatarUrl(data.avatar_url);
-      }
-    } catch (error) {
-      if (error instanceof Error) {
-        Alert.alert(error.message);
-      }
-    } finally {
-      setLoading(false);
-    }
-  }
+    getProfile();
+  }, []);
 
   return (
     <View>
-      <View>
-        <Text>Coucou</Text>
+      <View style={styles.header}>
+        <ThemedText type="subtitle">
+          {parseDateDDMMYYYY(String(date))}
+        </ThemedText>
+
+        <Text>Bonjour {username}</Text>
+
+        <Pressable
+          onPress={() => {
+            supabase.auth.signOut();
+          }}
+        >
+          <Text
+            style={{
+              marginTop: 20,
+            }}
+          >
+            Log out
+          </Text>
+        </Pressable>
       </View>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  header: {
+    paddingTop: "15%",
+    paddingBottom: "5%",
+    paddingHorizontal: "5%",
+    display: "flex",
+    justifyContent: "center",
+  },
+});

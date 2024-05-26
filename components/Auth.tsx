@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Alert, StyleSheet, View, AppState } from "react-native";
-import { supabase } from "../lib/supabase";
+import { supabase } from "@/lib/supabase";
 import { Button, Input } from "@rneui/themed";
 
 // Tells Supabase Auth to continuously refresh the session automatically if
@@ -27,6 +27,8 @@ export default function Auth() {
       password: password,
     });
 
+    console.log("error", error);
+
     if (error) Alert.alert(error.message);
     setLoading(false);
   }
@@ -34,16 +36,43 @@ export default function Auth() {
   async function signUpWithEmail() {
     setLoading(true);
     const {
-      data: { session },
+      data: { session, user },
       error,
     } = await supabase.auth.signUp({
       email: email,
       password: password,
     });
 
-    if (error) Alert.alert(error.message);
-    if (!session)
+    if (error) {
+      Alert.alert(error.message);
+      console.log("error", error);
+      setLoading(false);
+      return;
+    }
+
+    if (user) {
+      // Create a profile entry for the user in the "profile" table
+      const { data, error: profileError } = await supabase
+        .from("profile")
+        .insert([
+          {
+            uid: user.id,
+            username: user.email,
+            created_at: new Date(),
+          },
+        ]);
+
+      if (profileError) {
+        Alert.alert(profileError.message);
+        setLoading(false);
+        return;
+      }
+    }
+
+    if (!session) {
       Alert.alert("Please check your inbox for email verification!");
+    }
+
     setLoading(false);
   }
 
